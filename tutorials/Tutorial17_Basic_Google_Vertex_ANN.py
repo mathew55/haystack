@@ -10,7 +10,8 @@
 # marvellous seven kingdoms.
 
 import logging
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.googlevertex import GoogleVertexDocumentStore
+
 from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
 from haystack.nodes import FARMReader, TransformersReader,  ElasticsearchRetriever
 
@@ -38,7 +39,7 @@ def tutorial1_basic_qa_pipeline():
     launch_es()
 
     # Connect to Elasticsearch
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+    document_store = GoogleVertexDocumentStore(host="localhost", username="", password="", index="document")
 
     # ## Preprocessing of documents
     #

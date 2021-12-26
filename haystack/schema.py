@@ -131,7 +131,7 @@ class Document:
         return _doc
 
     @classmethod
-    def from_dict(cls, dict, field_map={}):
+    def  from_dict(cls, dict, field_map={}):
         """
         Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
