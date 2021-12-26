@@ -64,3 +64,8 @@ ray>=1.5.0,<=1.8.0
 dataclasses-json
 quantulum3
 azure-ai-formrecognizer==3.2.0b2
+#Google Vertex
+h5py
+grpcio==1.36.1
+google-cloud-aiplatform
+
