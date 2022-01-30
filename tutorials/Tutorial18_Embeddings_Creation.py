@@ -20,16 +20,28 @@
 from haystack.document_stores.googlevertex_mini import GoogleVertexDocumentStore
 import json
 
+import os
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/kuriakosemathew/Documents/work/haystack-creds.json"
 def tutorial1_basic_qa_pipeline():
 
     document_store = GoogleVertexDocumentStore()
     print("Trying to load json file")
     docs = []
+    counter = 0
     for line in open("/Users/kuriakosemathew/haystack_vector_test_data/glove100.json", "r"):
-        docs.append(json.loads(line))
+        doc = json.loads(line)
+        doc["content"] = ""
+        docs.append(doc)
+        if counter == 20:
+            break
+        counter +=1
     print(f"Loaded {len(docs)} records into memory")
+    print(docs[0].keys())
     document_store.write_documents(docs)
     print("Done..!")
+    # document_store = GoogleVertexDocumentStore()
+    document_store.create_index()
+
 
 
 if __name__ == "__main__":

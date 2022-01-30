@@ -39,7 +39,7 @@ def tutorial1_basic_qa_pipeline():
     launch_es()
 
     # Connect to Elasticsearch
-    document_store = GoogleVertexDocumentStore(host="localhost", username="", password="", index="document")
+    # document_store = GoogleVertexDocumentStore()
 
     # ## Preprocessing of documents
     #
@@ -62,11 +62,12 @@ def tutorial1_basic_qa_pipeline():
 
     # convert files to dicts containing documents that can be indexed to our datastore
     dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    print(dicts[0].keys())
     # You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
     # It must take a str as input, and return a str.
 
     # Now, let's write the docs to our DB.
-    document_store.write_documents(dicts)
+    # document_store.write_documents(dicts)
 
     # ## Initalize Retriever & Reader
     #
@@ -83,7 +84,7 @@ def tutorial1_basic_qa_pipeline():
     #   embeddings (e.g. created via Sentence-BERT)
     # - Use `TfidfRetriever` in combination with a SQL or InMemory Document store for simple prototyping and debugging
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    # retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Alternative: An in-memory TfidfRetriever based on Pandas dataframes for building quick-prototypes
     # with SQLite document store.
@@ -110,7 +111,7 @@ def tutorial1_basic_qa_pipeline():
 
     # Load a  local model or any of the QA models on
     # Hugging Face's model hub (https://huggingface.co/models)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
+    # reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
     # #### TransformersReader
 
@@ -124,22 +125,22 @@ def tutorial1_basic_qa_pipeline():
     # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
-    from haystack.pipelines import ExtractiveQAPipeline
-    
-    pipe = ExtractiveQAPipeline(reader, retriever)
-    
-    ## Voilà! Ask a question!
-    prediction = pipe.run(
-        query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-    )
-
-    # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
-    # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
-
-    # Now you can either print the object directly
-    print("\n\nRaw object:\n")
-    from pprint import pprint
-    pprint(prediction)
+    # from haystack.pipelines import ExtractiveQAPipeline
+    #
+    # pipe = ExtractiveQAPipeline(reader, retriever)
+    #
+    # ## Voilà! Ask a question!
+    # prediction = pipe.run(
+    #     query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+    # )
+    #
+    # # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
+    # # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
+    #
+    # # Now you can either print the object directly
+    # print("\n\nRaw object:\n")
+    # from pprint import pprint
+    # pprint(prediction)
 
     # Sample output:    
     # {
@@ -164,8 +165,8 @@ def tutorial1_basic_qa_pipeline():
 
     # Or use a util to simplify the output
     # Change `minimum` to `medium` or `all` to raise the level of detail
-    print("\n\nSimplified output:\n")
-    print_answers(prediction, details="minimum")
+    # print("\n\nSimplified output:\n")
+    # print_answers(prediction, details="minimum")
 
 
 

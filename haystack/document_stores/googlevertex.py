@@ -78,13 +78,13 @@ class GoogleVertexDocumentStore(BaseDocumentStore):
         # logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
         self.bucket_name = None
         self.endpoint = endpoint
-        try:
-            from pymilvus import connections
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
+        # try:
+        #     from pymilvus import connections
+        # except:
+        #     raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
-        connections.add_connection(default={"host": host, "port": port})
-        connections.connect()
+        # connections.add_connection(default={"host": host, "port": port})
+        # connections.connect()
 
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
@@ -194,11 +194,11 @@ class GoogleVertexDocumentStore(BaseDocumentStore):
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
 
-        try:
-            from pymilvus import FieldSchema, CollectionSchema, Collection, connections
-            from pymilvus.client.types import DataType
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
+        # try:
+        #     from pymilvus import FieldSchema, CollectionSchema, Collection, connections
+        #     from pymilvus.client.types import DataType
+        # except:
+        #     raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
