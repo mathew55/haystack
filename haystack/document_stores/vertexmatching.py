@@ -26,7 +26,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
     def __init__(
             self,
             project_id: str = "cloud-shenanigans-kuria",
-            bucket_name: str = "gs://haystack-ai2",
+            bucket_name: str = "haystack-ai2",
             region: str = "europe-west1",
             endpoint: str = "",
             network_name: str = "",
@@ -121,6 +121,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
                     dummy_embed_warning_raised = True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
+        bucket_client = storage.Client().get_bucket(self.bucket_name)
 
         with tqdm(total=len(document_objects), disable=not self.progress_bar, position=0,
                   desc="Writing Documents") as progress_bar:
@@ -145,6 +146,13 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
                     _doc["embedding"] = _doc["embedding"].tolist()
                     print(f"Original - {doc.to_dict()}")
                     print(f"Cleaned - {_doc}")
+
+                    blob = bucket_client.blob(_doc["id"] + ".json")
+                    blob.upload_from_string(
+                        data=json.dumps(_doc),
+                        content_type='application/json'
+                    )
+
                     # if self.similarity == "cosine": self.normalize_embedding(vector)
 
 

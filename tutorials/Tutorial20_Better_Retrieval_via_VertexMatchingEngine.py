@@ -1,6 +1,8 @@
 from haystack.document_stores import FAISSDocumentStore, VertexMatchingDocumentStore
 from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_dicts, fetch_archive_from_http
 from haystack.nodes import FARMReader, DensePassageRetriever
+import os
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/Users/kuriakosemathew/Documents/work/haystack-creds.json"
 
 def tutorial6_better_retrieval_via_dpr():
     # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
