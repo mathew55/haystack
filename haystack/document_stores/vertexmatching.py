@@ -26,7 +26,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
     def __init__(
             self,
             project_id: str = "cloud-shenanigans-kuria",
-            bucket_name: str = "haystack-ai2",
+            bucket_name: str = "haystack-ai",
             region: str = "europe-west1",
             endpoint: str = "",
             network_name: str = "",
@@ -111,6 +111,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
         # dummy vector so that indexing can still happen
         dummy_embed_warning_raised = False
         for doc in document_objects:
+            print(doc)
             if doc.embedding is None:
                 dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
                 doc.embedding = dummy_embedding
@@ -141,11 +142,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
                             _doc[k] = v
                         _doc.pop("meta")
 
-                    # doc_id = str(_doc.pop("id"))
-                    # vector = _doc.pop(self.embedding_field)
                     _doc["embedding"] = _doc["embedding"].tolist()
-                    print(f"Original - {doc.to_dict()}")
-                    print(f"Cleaned - {_doc}")
 
                     blob = bucket_client.blob(_doc["id"] + ".json")
                     blob.upload_from_string(
@@ -153,98 +150,79 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
                         content_type='application/json'
                     )
 
-                    # if self.similarity == "cosine": self.normalize_embedding(vector)
-
-
-                    # rename as weaviate doesn't like "_" in field names
-
-                    # Converting content to JSON-string as Weaviate doesn't allow other nested list for tables
-
-                    # # Check if additional properties are in the document, if so,
-                    # # append the schema with all the additional properties
-                    # missing_props = self._check_document(current_properties, _doc)
-                    # if missing_props:
-                    #     for property in missing_props:
-                    #         self._update_schema(property, index)
-                    #         current_properties.append(property)
-
-                #     docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
-                #
-                # # Ingest a batch of documents
-                # results = self.weaviate_client.batch.create(docs_batch)
-                # # Weaviate returns errors for every failed document in the batch
-                # if results is not None:
-                #     for result in results:
-                #         if 'result' in result and 'errors' in result['result'] \
-                #                 and 'error' in result['result']['errors']:
-                #             for message in result['result']['errors']['error']:
-                #                 logger.error(f"{message['message']}")
                 progress_bar.update(batch_size)
         progress_bar.close()
 
+    def update_embeddings(
+            self,
+            retriever,
+            index: Optional[str] = None,
+            update_existing_embeddings: bool = True,
+            batch_size: int = 10_000
+    ):
 
-def write_documents_old(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-                        headers: Optional[Dict[str, str]] = None) -> None:
-    bucket_client = storage.Client().get_bucket(self.bucket_name)
-    field_map = self._create_document_field_map()
+        """
+        Updates the embeddings in the the document store using the encoding model specified in the retriever.
+        This can be useful if want to change the embeddings for your documents (e.g. after changing the retriever config).
 
-    document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-    print(f"Document index - {document_objects[0]}")
-    documents_to_index = []
-    for doc in document_objects:
-        print("Starting a batch")
-        _doc = {
-            **doc.to_dict(field_map=self._create_document_field_map())
-        }  # type: Dict[str, Any]
+        :param retriever: Retriever to use to update the embeddings.
+        :param index: Index name to update
+        :param update_existing_embeddings: Weaviate mandates an embedding while creating the document itself.
+        This option must be always true for weaviate and it will update the embeddings for all the documents.
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :return: None
+        """
 
-        print(f"Type of doc - {_doc}")
-        # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
-        # we "unnest" all value within "meta"
-        documents_to_index.append(_doc)
+        if not self.embedding_field:
+            raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
-        # Pass batch_size number of documents to bulk
-        for doc in documents_to_index:
-            doc["embedding"] = doc["embedding"].tolist()
-            blob = bucket_client.blob("testfile" + doc["id"] + ".json")
-            blob.upload_from_string(
-                data=json.dumps(doc),
-                content_type='application/json'
-            )
-            documents_to_index = []
-            print("Batch Complete")
+        if update_existing_embeddings:
+            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+        else:
+            raise RuntimeError(
+                "All the documents in Weaviate store have an embedding by default. Only update is allowed!")
+
+        result = self._get_all_documents_in_index()
+
+        for result_batch in get_batches_from_generator(result, batch_size):
+            document_batch = [result_batch for hit in
+                              result_batch]
+            embeddings = retriever.embed_documents(document_batch)  # type: ignore
+            assert len(document_batch) == len(embeddings)
+
+            if embeddings[0].shape[0] != self.embedding_dim:
+                raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                   f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                   "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
+            for doc, emb in zip(document_batch, embeddings):
+                # Using update method to only update the embeddings, other properties will be in tact
+                print(f"This is the embedding - {emb}")
+                if self.similarity == "cosine": self.normalize_embedding(emb)
+                bucket_client = storage.Client().get_bucket(self.bucket_name)
+                blob = bucket_client.blob(doc["id"] + ".json")
+                blob.upload_from_string(
+                    data=json.dumps(doc),
+                    content_type='application/json'
+                )
+
+    def _get_all_documents_in_index(
+            self,
+    ) -> Generator[dict, None, None]:
+        bucket_client = storage.Client().get_bucket(self.bucket_name)
+        blob = bucket_client.blob(self.bucket_name)
+        data = []
+        for blob in bucket_client.list_blobs():
+            record = json.loads(blob.download_as_string(client=None))
+            meta_data = {k: v for k, v in record.items() if k not in (self.content_field, self.embedding_field)}
+            record["meta"] = meta_data
+            data.append(record)
+            print(data[-1])
+        field_map = self._create_document_field_map()
+        document_objects: List[Document] = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
+                            data]
+
+        return document_objects
 
 
-def update_embeddings(
-        self,
-        retriever: 'BaseRetriever',
-        index: Optional[str] = None,
-        update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, List[str]]] = None,
-        batch_size: int = 10_000
-):
-    """
-    Updates the embeddings in the the document store using the encoding model specified in the retriever.
-    This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
-
-    :param retriever: Retriever to use to get embeddings for text
-    :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
-    :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                       only documents without embeddings are processed. This mode can be used for
-                                       incremental updating of embeddings, wherein, only newly indexed documents
-                                       get processed.
-    :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                    Example: {"name": ["some", "more"], "category": ["only_one"]}
-    :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-    :return: None
-    """
-
-# def query_by_embedding(
-#         self,
-#         query_emb: np.ndarray,
-#         filters: Optional[Dict[str, List[str]]] = None,
-#         top_k: int = 10,
-#         index: Optional[str] = None,
-#         return_embedding: Optional[bool] = None,
-#         headers: Optional[Dict[str, str]] = None
-# ) -> List[Document]:

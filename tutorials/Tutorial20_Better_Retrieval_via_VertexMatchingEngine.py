@@ -14,46 +14,40 @@ def tutorial6_better_retrieval_via_dpr():
     # For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
     document_store = VertexMatchingDocumentStore()
 
-    # OPTION2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
-    # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
-    # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
-    # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
-    # launch_milvus()
-    # document_store = MilvusDocumentStore()
 
     # ## Preprocessing of documents
     # Let's first get some documents that we want to query
     doc_dir = "data/article_txt_got"
     s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
-    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
-
-    # convert files to dicts containing documents that can be indexed to our datastore
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
-    # print(dicts)
+    # fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+    # #
+    # # convert files to dicts containing documents that can be indexed to our datastore
+    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)[:1]
+    # # print(dicts)
     # print(dicts[0].keys())
 
     # # Now, let's write the docs to our DB.
     document_store.write_documents(dicts)
     #
     # ### Retriever
-    # retriever = DensePassageRetriever(document_store=document_store,
-    #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-    #                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-    #                                   max_seq_len_query=64,
-    #                                   max_seq_len_passage=256,
-    #                                   batch_size=2,
-    #                                   use_gpu=True,
-    #                                   embed_title=True,
-    #                                   use_fast_tokenizers=True
-    #                                   )
-    #
+    retriever = DensePassageRetriever(document_store=document_store,
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                      max_seq_len_query=64,
+                                      max_seq_len_passage=256,
+                                      batch_size=2,
+                                      use_gpu=True,
+                                      embed_title=True,
+                                      use_fast_tokenizers=True
+                                      )
+
     # # Important:
     # # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
     # # previously indexed documents and update their embedding representation.
     # # While this can be a time consuming operation (depending on corpus size), it only needs to be done once.
     # # At query time, we only need to embed the query and compare it the existing doc embeddings which is very fast.
-    # document_store.update_embeddings(retriever)
-    #
+    document_store.update_embeddings(retriever)
+    # #
     # ### Reader
     # # Load a  local model or any of the QA models on
     # # Hugging Face's model hub (https://huggingface.co/models)
