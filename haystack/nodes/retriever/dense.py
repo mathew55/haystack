@@ -291,11 +291,6 @@ class DensePassageRetriever(BaseRetriever):
                            f"not require any hard negatives. Setting num_hard_negatives to 0.")
             self.processor.num_hard_negatives = 0
 
-
-        print(docs[0])
-        print("Debug")
-        print(docs[0].content)
-        print(docs[0].meta["name"])
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
             "text": d.content,

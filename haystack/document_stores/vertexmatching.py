@@ -36,7 +36,7 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
             id_field: str = "id",
             duplicate_documents: str = 'overwrite',
             embedding_field: str = "embedding",
-            embedding_dim: int = 2,
+            embedding_dim: int = 768,
             index: str = "id",
             progress_bar: bool = True,
             similarity: str = "dot_product"
@@ -187,23 +187,37 @@ class VertexMatchingDocumentStore(BaseDocumentStore):
         result = self._get_all_documents_in_index()
 
         for result_batch in get_batches_from_generator(result, batch_size):
-            document_batch = [result_batch for hit in
-                              result_batch]
-            embeddings = retriever.embed_documents(document_batch)  # type: ignore
-            assert len(document_batch) == len(embeddings)
+            embeddings = retriever.embed_documents(result_batch)  # type: ignore
+            assert len(result_batch) == len(embeddings)
 
             if embeddings[0].shape[0] != self.embedding_dim:
                 raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
                                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
-            for doc, emb in zip(document_batch, embeddings):
+            for doc, emb in zip(result_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
                 print(f"This is the embedding - {emb}")
                 if self.similarity == "cosine": self.normalize_embedding(emb)
+
+                _doc = {
+                    **doc.to_dict(field_map=self._create_document_field_map())
+                }
+                _ = _doc.pop("score", None)
+
+                # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
+                # we "unnest" all value within "meta"
+                if "meta" in _doc.keys():
+                    for k, v in _doc["meta"].items():
+                        _doc[k] = v
+                    _doc.pop("meta")
+
+                _doc["embedding"] = _doc["embedding"].tolist()
+
                 bucket_client = storage.Client().get_bucket(self.bucket_name)
-                blob = bucket_client.blob(doc["id"] + ".json")
+                blob = bucket_client.blob(_doc["id"] + ".json")
+
                 blob.upload_from_string(
-                    data=json.dumps(doc),
+                    data=json.dumps(_doc),
                     content_type='application/json'
                 )
 
